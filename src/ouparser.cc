@@ -8,8 +8,7 @@
 
 #include <sqlite3.h>
 #include "dxf.h"
-
-// #include "xmlutil.h"
+#include "strutils.h"
 
 typedef struct {
   int id;
@@ -28,11 +27,33 @@ static std::map<int, ouRelation > ouRelations;
 
 static sqlite3* db;
 
+static const char* CAT_CREATE = "DROP TABLE IF EXISTS _categorystructure; CREATE TABLE _categorystructure (categoryoptioncomboid INTEGER PRIMARY KEY)";
+
 static const char* OU_INSERT = "INSERT OR REPLACE INTO organisationunit (organisationunitid, name, shortname, code) VALUES (?,?,?,?)";
 
 static const char* OUS_INSERT = "INSERT OR REPLACE INTO _orgunitstructure (organisationunitid, level, idlevel1,idlevel2,idlevel3,idlevel4,idlevel5,idlevel6,idlevel7,idlevel8) VALUES (?,?,?,?,?,?,?,?,?,?)";
 
 using namespace std;
+
+void processCategory(sqlite3_stmt *stmt, xmlTextReaderPtr reader)
+{      
+  findXmlElement(reader,"name");
+  char* categoryName = (char*)  xmlTextReaderReadString(reader);
+  char* sanitized = sanitizeString(categoryName);
+
+  char sql[100];
+  char* error;
+  snprintf(sql,100, "ALTER TABLE _categorystructure ADD COLUMN %s", sanitized);
+  cout << sql << endl;
+  sqlite3_exec(db,sql,NULL,NULL,&error);
+  if (error) {
+    cout << error << endl;
+    sqlite3_free(error);
+    exit (-1);
+  }
+  free(sanitized);
+  free(categoryName);
+}
 
 int saveOrgUnit(sqlite3_stmt *stmt, const orgUnit& ou)
 {
@@ -125,6 +146,13 @@ int  insertIntoOuStructureTable(sqlite3_stmt *stmt, int ou, int level)
 
 int main(int argc, char **argv) {
 
+  /*
+   * this initialize the library and check potential ABI mismatches
+   * between the version it was compiled for and the actual shared
+   * library used.
+   */
+  LIBXML_TEST_VERSION
+
   sqlite3_stmt *stmt;
 
   if (sqlite3_open_v2("nigtest.dmart", &db, SQLITE_OPEN_READWRITE,NULL) != SQLITE_OK)
@@ -132,22 +160,27 @@ int main(int argc, char **argv) {
       cerr << sqlite3_errmsg(db) << endl;
       exit (-1);
     }
-
-  sqlite3_exec(db, "BEGIN", 0, 0, 0);
-  /*
-   * this initialize the library and check potential ABI mismatches
-   * between the version it was compiled for and the actual shared
-   * library used.
-   */
-  LIBXML_TEST_VERSION
     
   xmlTextReaderPtr reader = xmlReaderForFd(0,NULL,"UTF-8",0);
   xmlTextReaderSetParserProp(reader,XML_PARSER_SUBST_ENTITIES,1);
   
+  int categories = 0;
   int ous = 0;
 
   if (reader != NULL) 
     {
+      cout << "Processing categories" << endl;
+      char* error;
+      sqlite3_exec(db,CAT_CREATE,NULL,NULL,&error);
+      if (error) 
+	{
+	  cout << "error: " << error << endl;
+	  sqlite3_free(error);
+	}
+      categories = processCollection(stmt, reader, "categories","category", processCategory);
+      cout << "hmm" << endl;
+ 
+      sqlite3_exec(db, "BEGIN", 0, 0, 0);
       cout << "Processing ous" << endl;
       if ( sqlite3_prepare(db, OU_INSERT, -1, &stmt, 0) != SQLITE_OK) {
 	cerr << "Could not prepare statement: " << sqlite3_errmsg(db) << endl;
@@ -156,7 +189,8 @@ int main(int argc, char **argv) {
       
       ous = processCollection(stmt, reader, "organisationUnits","organisationUnit", processOrgUnit);
       
-      //sqlite3_finalize(stmt);
+      sqlite3_finalize(stmt);
+
       cout << "Processing ou relations" << endl;
       processCollection(stmt, reader, "organisationUnitRelationships","organisationUnitRelationship",processOrgUnitRelationships);
     }
@@ -176,12 +210,12 @@ int main(int argc, char **argv) {
 
   cout << "root orgunit = " << rootOu << endl;
 
-  // walk the tree ...
+  // prepare to insert ou structure 
   if ( sqlite3_prepare(db, OUS_INSERT, -1, &stmt, 0) != SQLITE_OK) {
 	cerr << "Could not prepare statement: " << sqlite3_errmsg(db) << endl;
 	return 1;
       }
-      
+  // walk the tree ...     
   insertIntoOuStructureTable(stmt, rootOu, 1);
   sqlite3_finalize(stmt);
   
