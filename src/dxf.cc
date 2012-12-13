@@ -1,6 +1,10 @@
 #include "dxf.h"
 
-int findXmlElement(xmlTextReaderPtr reader, const char* elementName)
+#include <string>
+
+using namespace std;
+
+void findXmlElement(xmlTextReaderPtr reader, const char* elementName)
 {
   int found = 0;
   do 
@@ -10,23 +14,24 @@ int findXmlElement(xmlTextReaderPtr reader, const char* elementName)
 	found = xmlStrEqual(xmlTextReaderConstLocalName(reader), BAD_CAST elementName);
       }	
     } while (!found);
-  return found;
+  if (!found) throw new string(string("Element not found: ") + string(elementName));
 }
 
-int processCollection(sqlite3_stmt *stmt, 
-		       xmlTextReaderPtr reader, 
+int processCollection( xmlTextReaderPtr reader, 
 		       const char* collection, 
 		       const char* item, 
-		       void (*processor)(sqlite3_stmt *stmt, xmlTextReaderPtr reader) )
+		       Processor* processor )
 {
   int count = 0;
+  
+  processor->preprocess();
   findXmlElement(reader, collection);
   while (xmlTextReaderRead(reader))
     {
       if ( (xmlTextReaderNodeType(reader) == ELEMENT_START) && 
 	   (xmlStrEqual(xmlTextReaderConstLocalName(reader), BAD_CAST item)) )
 	{
-	  processor(stmt, reader);
+	  processor->process();
 	  count++;
 	}
 
@@ -34,5 +39,6 @@ int processCollection(sqlite3_stmt *stmt,
 	   (xmlStrEqual(xmlTextReaderConstLocalName(reader), BAD_CAST collection)) )
 	break;
     }
+  processor->postprocess();
   return count;
 }
