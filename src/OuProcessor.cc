@@ -117,7 +117,7 @@ void OuRelationProcessor::insertIntoOuStructureTable(int ou, int level)
     }
 
   if (sqlite3_step(m_insertStatement) != SQLITE_DONE) {
-    //throw string(sqlite3_errmsg(m_db));
+    throw string(sqlite3_errmsg(m_db));
   }
 
   for (set<int>::iterator iter = ouRelations[ou]->children->begin(); iter != ouRelations[ou]->children->end(); iter++) 

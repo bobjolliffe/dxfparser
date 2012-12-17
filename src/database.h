@@ -3,7 +3,8 @@
 
 #include <sqlite3.h>
 
-static const char* CAT_CREATE = "DROP TABLE IF EXISTS _categorystructure; CREATE TABLE _categorystructure (categoryoptioncomboid INTEGER PRIMARY KEY)";
+static const char* CAT_CREATE = "DROP TABLE IF EXISTS _categorystructure; \
+        CREATE TABLE _categorystructure ( categoryoptioncomboid INTEGER PRIMARY KEY";
 
 static const char* DIM_INSERT = "INSERT OR REPLACE INTO dimension ('name',dimtype,dimcolumn,display,concept) VALUES (?,1,?,?,NULL);";
 
@@ -14,8 +15,6 @@ static const char* OUS_INSERT = "INSERT OR REPLACE INTO _orgunitstructure (organ
 static const char* CATOPTCOMBONAME_INSERT = "INSERT OR REPLACE INTO _categoryoptioncomboname VALUES (?,?)";
 
 static const char* DB_PREPARE = "DROP TABLE IF EXISTS _orgunitgroupsetstructure; \
-        DROP TABLE IF EXISTS _categorystructure; \
-        CREATE TABLE _categorystructure ( categoryoptioncomboid INTEGER PRIMARY KEY); \
         DROP TABLE IF EXISTS _dataelementgroupsetstructure; \
         CREATE TABLE _dataelementgroupsetstructure (dataelementid INTEGER PRIMARY KEY); \
         DROP TABLE IF EXISTS _indicatorgroupsetstructure; \

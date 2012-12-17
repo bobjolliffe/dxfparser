@@ -14,7 +14,7 @@ void findXmlElement(xmlTextReaderPtr reader, const char* elementName)
 	found = xmlStrEqual(xmlTextReaderConstLocalName(reader), BAD_CAST elementName);
       }	
     } while (!found);
-  if (!found) throw new string(string("Element not found: ") + string(elementName));
+  if (!found) throw string(string("Element not found: ") + string(elementName));
 }
 
 int processCollection( xmlTextReaderPtr reader, 
