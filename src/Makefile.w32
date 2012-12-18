@@ -1,14 +1,20 @@
 EXTRAS=/home/bobj/libs
 LIBXML= $(EXTRAS)/libxml2-2.7.8.win32
-DLLS=$(EXTRAS)/sqlite3/bin/sqlite3.dll $(LIBXML)/bin/libxml2.dll
+DLLS=../bin/sqlite3.dll ../bin/libxml2.dll
 
-INCLUDE=-I$(EXTRAS)/sqlite3/src -I$(LIBXML)/include
+INCLUDE=-I../include
 CPPFLAGS += -O3 $(INCLUDE) 
 CC=g++
 LDFLAGS=$(DLLS)
 
-dxf1parser: dxf1parser.o dxf.o McDonaldsProcessor.o OuProcessor.o DEProcessor.o \
+TARGET=../bin/dxf1parser.exe
+
+OBJS=dxf1parser.o dxf.o McDonaldsProcessor.o OuProcessor.o DEProcessor.o \
  IndicatorProcessor.o GroupSetProcessor.o strutils.o
+	 
+
+$(TARGET): $(OBJS)
+	g++ -s -O3 -o $(TARGET) $(OBJS) $(LDFLAGS)
 
 DEProcessor.o: DEProcessor.cc DEProcessor.h processor.h \
  GroupSetProcessor.h database.h dxf.h
@@ -29,4 +35,4 @@ test.o: test.cc
 
 
 clean:
-	rm -f *.o *~ dxf1parser
+	rm -f *.o *~ $(TARGET)
