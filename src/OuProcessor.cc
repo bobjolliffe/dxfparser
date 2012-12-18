@@ -16,6 +16,9 @@ void OuProcessor::preprocess()
 void OuProcessor::postprocess()
 {
   sqlite3_finalize(m_insertStatement);
+  cout << "Processing ou relations" << endl;
+  processCollection(m_reader, "organisationUnitRelationships","organisationUnitRelationship",relationProcessor);
+  groupSetProcessor->process();
 }
 
 void OuProcessor::process()
@@ -41,6 +44,8 @@ void OuProcessor::process()
   rel->parent = -1;
   
   relationProcessor->addToMap(ou.id, rel);
+
+  groupSetProcessor->addId(ou.id);
 } 
 
 void  OuProcessor::saveOrgUnit(const orgUnit& ou)
@@ -129,3 +134,37 @@ void OuRelationProcessor::insertIntoOuStructureTable(int ou, int level)
 void OuRelationProcessor::addToMap(int key, ouRelation* rel) {   
   ouRelations.insert(pair<int,ouRelation*>(key, rel));     
 }
+
+
+void OuLevelProcessor::preprocess()
+{
+  setInsertStatement(OULEVEL_INSERT);
+}
+
+void OuLevelProcessor::postprocess()
+{
+  sqlite3_finalize(m_insertStatement);
+}
+
+void OuLevelProcessor::process()
+{
+  OuLevel ouLevel; 
+
+  findXmlElement(m_reader,"id");
+  sscanf((const char*)  xmlTextReaderReadString(m_reader), "%ul", &ouLevel.id);
+  findXmlElement(m_reader,"level");
+  sscanf((const char*)  xmlTextReaderReadString(m_reader), "%ul", &ouLevel.level);
+  findXmlElement(m_reader,"name");
+  ouLevel.name = (const char*)  xmlTextReaderReadString(m_reader);
+
+  sqlite3_reset(m_insertStatement);
+
+  sqlite3_bind_int( m_insertStatement, 1, ouLevel.id);
+  sqlite3_bind_int( m_insertStatement, 2, ouLevel.level);
+  sqlite3_bind_text( m_insertStatement, 3, ouLevel.name, strlen(ouLevel.name), SQLITE_STATIC);
+
+  if (sqlite3_step(m_insertStatement) != SQLITE_DONE) 
+    {
+      throw string(sqlite3_errmsg(m_db));
+    }  
+} 

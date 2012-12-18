@@ -10,6 +10,8 @@
 #include "dxf.h"
 #include "McDonalds.h"
 #include "McDonaldsProcessor.h"
+#include "DEProcessor.h"
+#include "IndicatorProcessor.h"
 #include "OuProcessor.h"
 #include "strutils.h"
 
@@ -33,7 +35,7 @@ int main(int argc, char **argv) {
    */
   LIBXML_TEST_VERSION
 
-    if (argc != 2) {
+    if (argc < 2) {
       cerr << "usage: metadataParser <dbname>" << endl;
       return -1;
     }
@@ -51,7 +53,9 @@ int main(int argc, char **argv) {
 	throw string(error);
       }
     
-      //sqlite3_trace(db, dbtrace, NULL);
+      if (argc == 3) {
+	sqlite3_trace(db, dbtrace, NULL);
+      }
 
       xmlTextReaderPtr reader = xmlReaderForFd(0,NULL,"UTF-8",0);
       xmlTextReaderSetParserProp(reader,XML_PARSER_SUBST_ENTITIES,1);
@@ -71,17 +75,29 @@ int main(int argc, char **argv) {
       cout << mcD.categoryCombos.size() << " categoryCombos"  << endl;
       saveMcDonalds(db, mcD);
 
+      DataElementProcessor deProcessor(db,reader);
+      cout << "Processing dataElements" << endl;
+      ous = processCollection(reader, "dataElements","dataElement", &deProcessor);
+
+      IndicatorTypeProcessor indTypeProcessor(db,reader);
+      IndicatorProcessor indProcessor(db,reader);
+      cout << "Processing indicators" << endl;
+      processCollection(reader, "indicatorTypes","indicatorType", &indTypeProcessor);
+      processCollection(reader, "indicators","indicator", &indProcessor);
+
       cout << "Processing ous" << endl;
       ous = processCollection(reader, "organisationUnits","organisationUnit", ouProcessor);
-      cout << "Processing ou relations" << endl;
-      processCollection(reader, "organisationUnitRelationships","organisationUnitRelationship",ouRelationProcessor);
       cout << "counted " << ous << " Org units" << endl;
+
+      OuLevelProcessor ouLevelProcessor(db, reader);
+      processCollection(reader, "organisationUnitLevels","organisationUnitLevel", &ouLevelProcessor);
+
+      sqlite3_exec(db, "COMMIT", 0, 0, 0);
 
     } catch (string ex) {
       cout << "Error : " << ex << endl;
+      sqlite3_exec(db, "ROLLBACK", 0, 0, 0);
     }
-    
-    sqlite3_exec(db, "COMMIT", 0, 0, 0);
     
     // cleanup
     delete ouRelationProcessor;

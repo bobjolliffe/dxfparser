@@ -4,6 +4,7 @@
 #include <map>
 #include <set>
 #include "processor.h"
+#include "GroupSetProcessor.h"
 
 typedef struct {
   int parent;
@@ -17,6 +18,12 @@ typedef struct {
   const char* code;
   const char* active;
 } orgUnit;
+
+typedef struct {
+  int id;
+  int level;
+  const char* name;
+} OuLevel;
 
 class OuRelationProcessor : public Processor {
     
@@ -47,8 +54,14 @@ class OuProcessor : public Processor {
     
  public:
  OuProcessor(sqlite3* db, xmlTextReaderPtr reader, OuRelationProcessor* relProcessor) : 
-  Processor(db, reader), relationProcessor(relProcessor) {}
+  Processor(db, reader), relationProcessor(relProcessor) 
+  {
+    groupSetProcessor = new GroupSetProcessor(db, reader, 
+					      ORGUNIT);
+  }
   
+  ~OuProcessor() { delete groupSetProcessor; }
+
   void preprocess();
   void process();
   void postprocess();
@@ -56,6 +69,18 @@ class OuProcessor : public Processor {
  private:
   void saveOrgUnit(const orgUnit& ou);
   OuRelationProcessor* relationProcessor;
+  GroupSetProcessor* groupSetProcessor;
+};
+
+class OuLevelProcessor : public Processor {
+    
+ public:
+ OuLevelProcessor(sqlite3* db, xmlTextReaderPtr reader) : 
+  Processor(db, reader) {}
+  
+  void preprocess();
+  void process();
+  void postprocess();
 };
   
 
